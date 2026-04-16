@@ -1,36 +1,40 @@
 body {
   margin:0;
-  font-family:sans-serif;
+  font-family:Segoe UI;
   background:#020617;
   color:white;
 }
 
 .sidebar {
-  width:200px;
+  width:220px;
   height:100vh;
   position:fixed;
   background:#020617;
   padding:20px;
 }
 
-.sidebar h2 {
-  color:#22c55e;
-}
+.sidebar h2 { color:#22c55e; }
 
-.sidebar a {
+.sidebar button {
   display:block;
   margin:10px 0;
-  color:#94a3b8;
+  width:100%;
+  padding:10px;
+  border:none;
+  background:#1e293b;
+  color:white;
+  border-radius:10px;
+  cursor:pointer;
 }
 
 .main {
-  margin-left:220px;
+  margin-left:240px;
   padding:20px;
 }
 
 .card {
   background:#1e293b;
   padding:20px;
-  border-radius:10px;
+  border-radius:15px;
   margin-bottom:20px;
 }
