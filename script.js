@@ -75,10 +75,16 @@ async function loadData() {
     document.getElementById('cpu').textContent        = data.cpu;
 
     // Info card
-    document.getElementById('version').textContent     = data.version;
-    document.getElementById('ipDetail').textContent    = data.ip;
+    document.getElementById('version').textContent      = data.version;
+    document.getElementById('ipDetail').textContent     = data.ip;
     document.getElementById('statusDetail').textContent = data.status;
     document.getElementById('playersDetail').textContent = `${data.players} / ${data.maxPlayers}`;
+
+    // Pre-fill max players input if empty
+    const mpInput = document.getElementById('maxPlayersInput');
+    if (mpInput && !mpInput.dataset.userEdited) {
+      mpInput.value = data.maxPlayers;
+    }
 
     // Sidebar badge
     const dot  = document.querySelector('.badge-dot');
@@ -101,7 +107,7 @@ async function loadData() {
 }
 
 /* ── Control Actions ──────────────────────────────────── */
-const actionIcons = { start: '▶', stop: '⏹', restart: '↺' };
+const actionIcons  = { start: '▶', stop: '⏹', restart: '↺' };
 const actionLabels = { start: 'Server Started', stop: 'Server Stopped', restart: 'Server Restarting' };
 const actionColors = { start: '#00e5a0', stop: '#f87171', restart: '#a78bfa' };
 
@@ -171,6 +177,32 @@ async function saveIP() {
   }
 }
 
+/* ── Max Players Save ─────────────────────────────────── */
+async function saveMaxPlayers() {
+  const input = document.getElementById('maxPlayersInput');
+  const msg   = document.getElementById('maxPlayersSaveMsg');
+  const val   = parseInt(input.value.trim(), 10);
+
+  if (!val || val < 1 || val > 10000) {
+    msg.innerHTML = '<span style="color:#f87171">Enter a valid number (1–10000).</span>';
+    return;
+  }
+  try {
+    await fetch('/set_max_players', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_players: val }),
+    });
+    msg.innerHTML = `<span style="color:#00e5a0">✓ Max players set to ${val}</span>`;
+    input.dataset.userEdited = '';   // clear flag so it syncs again
+    pushActivity(`Max players updated → <strong>${val}</strong>`, '#22d3ee');
+    loadData();
+    setTimeout(() => { msg.textContent = ''; delete input.dataset.userEdited; }, 4000);
+  } catch (e) {
+    msg.innerHTML = '<span style="color:#f87171">✗ Failed to save.</span>';
+  }
+}
+
 /* ── Console ──────────────────────────────────────────── */
 let consoleAutoScroll = true;
 
@@ -235,10 +267,13 @@ async function askAI() {
     });
     const data = await res.json();
 
-    // Replace typing indicator with actual reply
     const typing = document.getElementById(typingId);
     if (typing) {
-      typing.querySelector('.msg-bubble').innerHTML = data.reply || 'No response.';
+      // Render **bold** markdown from Claude
+      typing.querySelector('.msg-bubble').innerHTML =
+        (data.reply || 'No response.')
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\n/g, '<br>');
     }
   } catch (e) {
     const typing = document.getElementById(typingId);
