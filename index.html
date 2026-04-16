@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Forest Panel</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>🌲 Forest</h2>
+  <a>Dashboard</a>
+</div>
+
+<div class="main">
+  <h1>Dashboard</h1>
+
+  <div class="card">
+    <h3>Status</h3>
+    <p id="status">Loading...</p>
+  </div>
+
+  <div class="card">
+    <h3>Players</h3>
+    <p id="players">0</p>
+  </div>
+
+  <div class="card">
+    <h3>Server IP</h3>
+    <p id="ip_show">Not Set</p>
+    <input id="ip" placeholder="Enter IP">
+    <button onclick="setIP()">Save</button>
+  </div>
+
+</div>
+
+<script src="/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+body {
+  margin:0;
+  font-family:sans-serif;
+  background:#020617;
+  color:white;
+}
+
+.sidebar {
+  width:200px;
+  height:100vh;
+  position:fixed;
+  background:#020617;
+  padding:20px;
+}
+
+.sidebar h2 {
+  color:#22c55e;
+}
+
+.sidebar a {
+  display:block;
+  margin:10px 0;
+  color:#94a3b8;
+}
+
+.main {
+  margin-left:220px;
+  padding:20px;
+}
+
+.card {
+  background:#1e293b;
+  padding:20px;
+  border-radius:10px;
+  margin-bottom:20px;
+}
