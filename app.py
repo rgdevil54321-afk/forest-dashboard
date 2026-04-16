@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, Response
-import json, os, time
+import json, os, time, urllib.request
 from datetime import datetime
 
 app = Flask(__name__)
@@ -7,6 +7,8 @@ app = Flask(__name__)
 DATA_FILE   = "data.json"
 ACTION_FILE = "action.json"
 LOG_FILE    = "logs.txt"
+
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── helpers ──────────────────────────────────────────────
 def load_json(f):
@@ -44,14 +46,14 @@ def js():
 def api():
     d = load_json(DATA_FILE)
     return jsonify({
-        "status":  d.get("status", "Online"),
-        "players": d.get("players", 0),
+        "status":     d.get("status", "Online"),
+        "players":    d.get("players", 0),
         "maxPlayers": d.get("max_players", 20),
-        "ip":      d.get("mc_ip", "Not configured"),
-        "uptime":  d.get("uptime", "0h 0m"),
-        "memory":  d.get("memory", "0 MB"),
-        "cpu":     d.get("cpu", "0%"),
-        "version": d.get("version", "Unknown"),
+        "ip":         d.get("mc_ip", "Not configured"),
+        "uptime":     d.get("uptime", "0h 0m"),
+        "memory":     d.get("memory", "0 MB"),
+        "cpu":        d.get("cpu", "0%"),
+        "version":    d.get("version", "Unknown"),
     })
 
 @app.route("/set_ip", methods=["POST"])
@@ -61,6 +63,18 @@ def set_ip():
     d["mc_ip"] = data.get("ip", "")
     save_json(DATA_FILE, d)
     log(f"Server IP updated → {d['mc_ip']}")
+    return jsonify({"ok": True})
+
+@app.route("/set_max_players", methods=["POST"])
+def set_max_players():
+    data = request.get_json(silent=True) or {}
+    d = load_json(DATA_FILE)
+    try:
+        d["max_players"] = int(data.get("max_players", 20))
+    except (ValueError, TypeError):
+        return jsonify({"ok": False, "error": "Invalid value"}), 400
+    save_json(DATA_FILE, d)
+    log(f"Max players updated → {d['max_players']}")
     return jsonify({"ok": True})
 
 @app.route("/action", methods=["POST"])
@@ -86,7 +100,6 @@ def console():
         return jsonify({"logs": "No logs yet."})
     with open(LOG_FILE) as fh:
         lines = fh.readlines()
-    # Return last 80 lines
     return jsonify({"logs": "".join(lines[-80:])})
 
 @app.route("/console/clear", methods=["POST"])
@@ -95,6 +108,7 @@ def clear_console():
     log("Console cleared.")
     return jsonify({"ok": True})
 
+# ── AI ───────────────────────────────────────────────────
 @app.route("/ai", methods=["POST"])
 def ai():
     data = request.get_json(silent=True) or {}
@@ -102,27 +116,58 @@ def ai():
     if not q:
         return jsonify({"reply": "Please enter a question."})
 
-    q_lower = q.lower()
-    if any(w in q_lower for w in ["status", "online", "offline"]):
-        reply = "The server status is checked via the Dashboard tab. It refreshes automatically every 3 seconds."
-    elif any(w in q_lower for w in ["ip", "address", "connect"]):
-        d = load_json(DATA_FILE)
-        ip = d.get("mc_ip", "Not configured")
-        reply = f"The server IP is currently set to: **{ip}**. You can update it in the Control tab."
-    elif any(w in q_lower for w in ["start", "stop", "restart"]):
-        reply = "Use the Control tab to Start, Stop, or Restart your server. Actions are logged in real-time."
-    elif any(w in q_lower for w in ["players", "who", "how many"]):
-        d = load_json(DATA_FILE)
-        reply = f"Currently {d.get('players', 0)} players are online."
-    elif any(w in q_lower for w in ["log", "console", "error"]):
-        reply = "Check the Console tab for real-time logs. The console auto-refreshes every 2 seconds."
-    elif any(w in q_lower for w in ["help", "what", "how"]):
-        reply = "I can help with: server status, IP settings, player count, starting/stopping the server, and reading logs. Just ask!"
-    else:
-        reply = f"Got your message: \"{q}\". For now I handle server-related queries. Try asking about status, IP, players, or controls."
+    # Build real server context for Claude
+    d = load_json(DATA_FILE)
+    server_context = f"""You are an AI assistant embedded inside a Minecraft server hosting panel called Forest Panel.
+You have live access to the current server state shown below. Use this data when answering questions.
 
-    log(f"AI query → {q}")
-    return jsonify({"reply": reply})
+=== LIVE SERVER STATE ===
+Status:        {d.get('status', 'Unknown')}
+Players:       {d.get('players', 0)} / {d.get('max_players', 20)} online
+Server IP:     {d.get('mc_ip', 'Not configured')}
+Uptime:        {d.get('uptime', 'N/A')}
+Memory usage:  {d.get('memory', 'N/A')}
+CPU usage:     {d.get('cpu', 'N/A')}
+Version:       {d.get('version', 'Unknown')}
+=========================
+
+You can answer questions about: server status, player counts, how to connect, starting/stopping/restarting the server, reading console logs, server performance, Minecraft-related questions, and general hosting help.
+Be concise, helpful, and friendly. Use markdown bold (**text**) for important values. Keep replies under 120 words unless a detailed explanation is clearly needed."""
+
+    if not ANTHROPIC_API_KEY:
+        # Fallback if no API key is set
+        log(f"AI query (no key) → {q}")
+        return jsonify({"reply": "⚠️ AI is not configured. Set the `ANTHROPIC_API_KEY` environment variable on Render to enable real AI responses."})
+
+    try:
+        payload = json.dumps({
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 300,
+            "system": server_context,
+            "messages": [{"role": "user", "content": q}]
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=payload,
+            headers={
+                "Content-Type":      "application/json",
+                "x-api-key":         ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST"
+        )
+
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+
+        reply = result["content"][0]["text"].strip()
+        log(f"AI query → {q}")
+        return jsonify({"reply": reply})
+
+    except Exception as e:
+        log(f"AI error → {str(e)}")
+        return jsonify({"reply": f"⚠️ AI request failed: {str(e)}"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=False)
