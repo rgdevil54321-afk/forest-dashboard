@@ -86,7 +86,7 @@
           <div class="stat-icon">👥</div>
           <div class="stat-info">
             <div class="stat-label">Players</div>
-            <div class="stat-value"><span id="players">0</span> / <span id="maxPlayers">20</span></div>
+            <div class="stat-value"><span id="players">0</span> / <span id="maxPlayers">—</span></div>
           </div>
           <div class="stat-glow"></div>
         </div>
@@ -211,6 +211,28 @@
 
         <div class="glass-card">
           <div class="card-header">
+            <span>👥 Max Player Slots</span>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Maximum Players Allowed</label>
+            <div class="input-row">
+              <input
+                class="glass-input"
+                id="maxPlayersInput"
+                type="number"
+                min="1"
+                max="10000"
+                placeholder="e.g. 50"
+                oninput="this.dataset.userEdited='1'"
+              />
+              <button class="save-btn" onclick="saveMaxPlayers()">Save</button>
+            </div>
+            <div class="input-hint" id="maxPlayersSaveMsg"></div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-header">
             <span>📋 Last Action</span>
           </div>
           <div class="last-action" id="lastAction">
@@ -248,7 +270,7 @@
             <div class="ai-avatar">🤖</div>
             <div class="ai-hero-text">
               <h2>Forest AI Assistant</h2>
-              <p>Ask anything about your server — status, players, controls, logs and more.</p>
+              <p>Ask anything about your server — status, players, controls, logs and more. Powered by Claude AI.</p>
             </div>
           </div>
         </div>
@@ -257,7 +279,7 @@
           <div class="chat-window" id="chatWindow">
             <div class="chat-msg bot">
               <span class="msg-avatar">🤖</span>
-              <div class="msg-bubble">Hey! I'm your Forest AI assistant. Ask me anything about your server.</div>
+              <div class="msg-bubble">Hey! I'm your Forest AI assistant powered by Claude. Ask me anything about your server — status, players, how to connect, performance, or general Minecraft help.</div>
             </div>
           </div>
           <div class="chat-input-row">
